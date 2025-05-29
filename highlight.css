@@ -1,0 +1,12 @@
+/* highlight.css */
+.plugin-highlight-element {
+    outline: 2px solid #2ecc71 !important; /* 绿色边框 */
+    box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.5) !important; /* 绿色阴影 */
+    cursor: pointer !important; /* 提示可点击 */
+    transition: outline 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+}
+
+.plugin-highlight-element-selected {
+    outline: 2px solid #e74c3c !important; /* 选中后的红色边框 */
+    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.5) !important; /* 红色阴影 */
+}
