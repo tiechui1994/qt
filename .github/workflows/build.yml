@@ -23,6 +23,7 @@ jobs:
           target: 'desktop'
           arch: 'win64_msvc2019_64' # 或 win64_mingw 等
           modules: ''               # 额外模块，如 qtcharts qtwebengine
+          cache: true
 
       # ✅ 配置 MSVC 环境（如果用 MSVC 编译器）
       - name: Setup MSVC
@@ -52,15 +53,10 @@ jobs:
             --no-system-d3d-compiler `
             deploy\HelloWorld.exe
 
-      # ✅ 打包为 zip
-      - name: Package as ZIP
-        run: |
-          Compress-Archive -Path deploy\* -DestinationPath HelloWorld-windows-x64.zip
-
       # ✅ 上传 Artifact（每次构建都可下载）
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: HelloWorld-windows-x64
-          path: HelloWorld-windows-x64.zip
+          path: deploy\*
           retention-days: 1
