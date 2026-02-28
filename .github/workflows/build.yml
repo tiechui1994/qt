@@ -1,0 +1,66 @@
+name: Build Qt Windows
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ✅ 安装 Qt（推荐用 jurplel/install-qt-action）
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.0'          # Qt 版本，按需修改
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64' # 或 win64_mingw 等
+          modules: ''               # 额外模块，如 qtcharts qtwebengine
+
+      # ✅ 配置 MSVC 环境（如果用 MSVC 编译器）
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # ✅ 用 CMake 构建（推荐）
+      - name: Configure CMake
+        run: cmake -B build -S . -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      # ---- 如果用 qmake，替换上面两步 ----
+      # - name: Build with qmake
+      #   run: |
+      #     qmake -o build/Makefile your_project.pro CONFIG+=release
+      #     cd build && nmake
+
+      # ✅ 用 windeployqt 打包依赖
+      - name: Deploy Qt Dependencies
+        run: |
+          mkdir -p deploy
+          copy build\HelloWorld.exe deploy\   # 修改为你的 exe 名
+          windeployqt --release --no-translations `
+            --no-system-d3d-compiler `
+            deploy\HelloWorld.exe
+
+      # ✅ 打包为 zip
+      - name: Package as ZIP
+        run: |
+          Compress-Archive -Path deploy\* -DestinationPath HelloWorld-windows-x64.zip
+
+      # ✅ 上传 Artifact（每次构建都可下载）
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HelloWorld-windows-x64
+          path: HelloWorld-windows-x64.zip
+          retention-days: 1
