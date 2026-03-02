@@ -22,7 +22,7 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64' # 或 win64_mingw 等
-          modules: 'qtwebchannel'               # 额外模块，如 qtcharts qtwebengine
+          modules: 'qtwebchannel qtwebsockets'               # 额外模块，如 qtcharts qtwebengine
 
       # ✅ 配置 MSVC 环境（如果用 MSVC 编译器）
       - name: Setup MSVC
