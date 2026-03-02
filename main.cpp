@@ -1,3 +1,5 @@
+#include "UiAutomationProxyServer.h"
+
 #include <QApplication>
 #include <QMainWindow>
 #include <QStackedWidget>
@@ -308,6 +310,10 @@ int main(int argc, char *argv[]) {
     
     WidgetsDemoWindow window;
     window.show();
+
+    UiAutomationProxyServer proxy;
+    proxy.useDefaultQtHandler(&window);
+    proxy.start(12345, QHostAddress::LocalHost, QStringLiteral("demo-token"));
     
     return app.exec();
 }

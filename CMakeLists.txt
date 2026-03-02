@@ -8,8 +8,17 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Quick WebChannel WebSockets)
+
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/qt_webchannel_proxy_sdk" "${CMAKE_CURRENT_BINARY_DIR}/proxy_sdk")
 
 add_executable(HelloWorld WIN32 main.cpp)
 
-target_link_libraries(HelloWorld PRIVATE Qt6::Widgets)
+target_link_libraries(HelloWorld 
+    PRIVATE
+    Qt6::Widgets
+    qt_webchannel_proxy_sdk
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+)
