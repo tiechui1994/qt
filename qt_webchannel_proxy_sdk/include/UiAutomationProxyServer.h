@@ -50,6 +50,34 @@ private:
     QObject *m_root = nullptr;
 };
 
+class QtQmlUiAutomationHandler final : public UiAutomationHandler {
+public:
+    explicit QtQmlUiAutomationHandler(QObject *rootObject = nullptr);
+
+    void setRootObject(QObject *rootObject);
+    QObject *rootObject() const;
+
+    QJsonValue resolve(const QJsonObject &target, QString *error) override;
+    QJsonValue executeAction(const QString &action, const QJsonObject &target, const QJsonValue &value, QString *error) override;
+    QJsonValue readProperty(const QJsonObject &target, const QString &propertyName, QString *error) override;
+    QJsonValue screenshot(const QString &path, QString *error) override;
+    QJsonValue dumpTree(QString *error) override;
+
+private:
+    QObject *findTarget(const QJsonObject &target, QString *error) const;
+    QObject *findByObjectNameLike(const QString &value) const;
+    QObject *findByTextLike(const QString &value) const;
+    bool clickObject(QObject *obj) const;
+    bool setChecked(QObject *obj, bool checked) const;
+    bool setCurrentText(QObject *obj, const QString &value) const;
+    bool setCurrentIndex(QObject *obj, int index) const;
+    bool closeObject(QObject *obj) const;
+    bool setTextValue(QObject *obj, const QString &value) const;
+    QObject *rootRequired(QString *error) const;
+
+    QObject *m_root = nullptr;
+};
+
 class UiAutomationBridge : public QObject {
     Q_OBJECT
 public:
@@ -78,6 +106,7 @@ public:
 
     void setHandler(UiAutomationHandler *handler);
     void useDefaultQtHandler(QObject *rootObject);
+    void useDefaultQmlHandler(QObject *rootObject);
     UiAutomationBridge *bridge() const;
 
     bool start(quint16 port, const QHostAddress &address = QHostAddress::LocalHost, const QString &token = QString());
@@ -96,6 +125,6 @@ private:
     QWebSocketServer *m_server = nullptr;
     QWebChannel *m_channel = nullptr;
     UiAutomationBridge *m_bridge = nullptr;
-    std::unique_ptr<QtGenericUiAutomationHandler> m_defaultHandler;
+    std::unique_ptr<UiAutomationHandler> m_defaultHandler;
     QHash<QWebSocket *, SocketTransport *> m_transports;
 };

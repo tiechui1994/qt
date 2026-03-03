@@ -8,19 +8,21 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Quick WebChannel WebSockets)
+
+find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Widgets Quick WebChannel WebSockets)
 
 add_library(qt_webchannel_proxy_sdk
     src/UiAutomationProxyServer.cpp
+    src/UiAutomationProxyServerQml.cpp
     include/UiAutomationProxyServer.h
 )
 target_include_directories(qt_webchannel_proxy_sdk PUBLIC include)
 target_link_libraries(qt_webchannel_proxy_sdk
     PUBLIC
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
-    Qt6::Quick
-    Qt6::WebChannel
-    Qt6::WebSockets
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Widgets
+    Qt5::Quick
+    Qt5::WebChannel
+    Qt5::WebSockets
 )

@@ -609,6 +609,11 @@ void UiAutomationProxyServer::useDefaultQtHandler(QObject *rootObject) {
     m_bridge->setHandler(m_defaultHandler.get());
 }
 
+void UiAutomationProxyServer::useDefaultQmlHandler(QObject *rootObject) {
+    m_defaultHandler = std::make_unique<QtQmlUiAutomationHandler>(rootObject);
+    m_bridge->setHandler(m_defaultHandler.get());
+}
+
 UiAutomationBridge *UiAutomationProxyServer::bridge() const {
     return m_bridge;
 }

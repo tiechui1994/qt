@@ -1,8 +1,17 @@
 name: Build Qt Windows
 
 on:
-  push:
-    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      build:
+        description: 'name'
+        required: false
+        default: 'qml'
+        type: choice
+        options:
+          - 'qml'
+          - 'widgets'
+
 
 jobs:
   build:
@@ -18,11 +27,11 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.7.0'          # Qt 版本，按需修改
+          version: '5.15.2'          # Qt 版本，按需修改
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64' # 或 win64_mingw 等
-          modules: 'qtwebchannel qtwebsockets'               # 额外模块，如 qtcharts qtwebengine
+          modules: ''               # 额外模块，如 qtcharts qtwebengine
 
       # ✅ 配置 MSVC 环境（如果用 MSVC 编译器）
       - name: Setup MSVC
@@ -32,30 +41,31 @@ jobs:
 
       # ✅ 用 CMake 构建（推荐）
       - name: Configure CMake
-        run: cmake -B build -S . -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: cmake --build build --config Release --parallel
-
-      # ---- 如果用 qmake，替换上面两步 ----
-      # - name: Build with qmake
-      #   run: |
-      #     qmake -o build/Makefile your_project.pro CONFIG+=release
-      #     cd build && nmake
-
-      # ✅ 用 windeployqt 打包依赖
-      - name: Deploy Qt Dependencies
+        run: |
+          cd ${{github.event.inputs.build}}
+          cmake -B ${{github.workspace}}\build -S . -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
+          cmake --build ${{github.workspace}}\build --config Release --parallel
+      
+      - name: Deploy Qt Dependencies widgets
+        if: ${{ github.event.inputs.build == 'widgets' }}
         run: |
           mkdir -p deploy
-          copy build\HelloWorld.exe deploy\   # 修改为你的 exe 名
+          copy ${{github.workspace}}\build\${{github.event.inputs.build}}.exe deploy\   # 修改为你的 exe 名
           windeployqt --release --no-translations `
             --no-system-d3d-compiler `
-            deploy\HelloWorld.exe
-
+            deploy\${{github.event.inputs.build}}.exe
+      
+      - name: Deploy Qt Dependencies qml
+        if: ${{ github.event.inputs.build == 'qml' }}
+        run: |
+          mkdir -p deploy
+          copy ${{github.workspace}}\build\${{github.event.inputs.build}}.exe deploy\
+          windeployqt --release --qmldir ${{github.workspace}}\qml\ui deploy\${{github.event.inputs.build}}.exe
+      
       # ✅ 上传 Artifact（每次构建都可下载）
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HelloWorld-windows-x64
+          name: ${{github.event.inputs.build}}-windows
           path: deploy\*
           retention-days: 1
