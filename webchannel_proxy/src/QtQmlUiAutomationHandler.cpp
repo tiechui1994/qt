@@ -304,6 +304,10 @@ QJsonValue QtQmlUiAutomationHandler::dumpTree(QString *error) {
         QJsonObject line;
         line.insert(QStringLiteral("objectName"), obj->objectName());
         line.insert(QStringLiteral("className"), QString::fromUtf8(obj->metaObject()->className()));
+        const QVariant idValue = obj->property("id");
+        if (idValue.isValid()) {
+            line.insert(QStringLiteral("id"), toJson(idValue));
+        }
         const QVariant text = obj->property("text");
         if (text.isValid()) {
             line.insert(QStringLiteral("text"), toJson(text));
@@ -326,7 +330,7 @@ QObject *QtQmlUiAutomationHandler::findTarget(const QJsonObject &target, QString
         return nullptr;
     }
 
-    if (kind == QStringLiteral("objectname") || kind == QStringLiteral("id")) {
+    if (kind == QStringLiteral("objectname")) {
         QObject *obj = findByObjectNameLike(value);
         if (!obj) {
             setError(QStringLiteral("target not found by objectName: %1").arg(value), error);
@@ -465,3 +469,5 @@ QObject *QtQmlUiAutomationHandler::rootRequired(QString *error) const {
     setError(QStringLiteral("root object is not configured"), error);
     return nullptr;
 }
+
+#include "QtQmlUiAutomationHandler.moc"

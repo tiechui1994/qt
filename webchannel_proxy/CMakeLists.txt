@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(qt_webchannel_proxy_sdk LANGUAGES CXX)
+project(webchannel_proxy LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,13 +11,14 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Widgets Quick WebChannel WebSockets)
 
-add_library(qt_webchannel_proxy_sdk
+add_library(webchannel_proxy
     src/UiAutomationProxyServer.cpp
-    src/UiAutomationProxyServerQml.cpp
+    src/QtGenericUiAutomationHandler.cpp
+    src/QtQmlUiAutomationHandler.cpp
     include/UiAutomationProxyServer.h
 )
-target_include_directories(qt_webchannel_proxy_sdk PUBLIC include)
-target_link_libraries(qt_webchannel_proxy_sdk
+target_include_directories(webchannel_proxy PUBLIC include)
+target_link_libraries(webchannel_proxy
     PUBLIC
     Qt5::Core
     Qt5::Gui
