@@ -1,0 +1,53 @@
+name: Build Qt Version
+
+on:
+  workflow_dispatch:
+    inputs:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '5.15.2'          # Qt 版本，按需修改
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64' # 或 win64_mingw 等
+          modules: ''               # 额外模块，如 qtcharts qtwebengine
+      
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      
+      - name: Setup vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          ./vcpkg/bootstrap-vcpkg.bat
+          ./vcpkg/vcpkg install detours:x64-windows
+
+      - name: Configure and Build
+        run: |
+          cd version
+          cmake -B build  -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DTOOL_PATH=${{ github.workspace }}/vcpkg/installed/x64-windows
+          cmake --build build --config Release
+      
+      - name: tmate
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: QtAutoAgent
+          path: |
+            version/build
+          retention-days: 1

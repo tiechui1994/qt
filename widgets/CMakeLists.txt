@@ -10,14 +10,14 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Widgets Quick WebChannel WebSockets)
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../qt_webchannel_proxy_sdk" "${CMAKE_CURRENT_BINARY_DIR}/proxy_sdk")
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../webchannel_proxy" "${CMAKE_CURRENT_BINARY_DIR}/proxy_sdk")
 
 add_executable(widgets WIN32 main.cpp)
 
 target_link_libraries(widgets 
     PRIVATE
     Qt5::Widgets
-    qt_webchannel_proxy_sdk
+    webchannel_proxy
     Qt5::Core
     Qt5::Gui
     Qt5::Widgets

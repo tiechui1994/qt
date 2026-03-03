@@ -1,0 +1,138 @@
+name: Build GammaRay (Windows / Qt 5.15)
+
+on:
+  workflow_dispatch:          # 允许手动触发
+
+jobs:
+  build:
+    name: Windows MSVC – Qt
+    runs-on: windows-2022     # 含 MSVC 2022，向下兼容 MSVC 2019 工具集
+    env:
+      QT_VERSION:   "5.15.2"
+      QT_ARCH:      "win64_msvc2019_64"
+      CMAKE_VERSION: "3.28.x"
+      BUILD_TYPE:   "Release"
+
+    steps:
+      # ---------------------------------------------------------------
+      # 1. 检出源码（含子模块，GammaRay 的 3rdparty/ 依赖子模块）
+      # ---------------------------------------------------------------
+      - name: Checkout GammaRay
+        uses: actions/checkout@v4
+        with:
+          repository: KDAB/GammaRay        # ← 官方仓库，可换成你的 fork
+          ref: v3.2.0                       # ← 锁定支持 Qt 5 的版本
+          submodules: recursive
+          fetch-depth: 0        # 需要完整历史以正确生成版本号
+
+      # ---------------------------------------------------------------
+      # 2. 安装 CMake（保证版本 >= 3.16，GammaRay 最低要求）
+      # ---------------------------------------------------------------
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: ${{ env.CMAKE_VERSION }}
+
+      # ---------------------------------------------------------------
+      # 3. 安装 Qt 5.15（含 private headers；使用 aqtinstall 实现）
+      #    modules 按需裁剪：保留 GammaRay 常用模块
+      #    Qt 5.15 使用 MSVC 2019 工具集（win64_msvc2019_64）
+      # ---------------------------------------------------------------
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version:      ${{ env.QT_VERSION }}
+          host:         windows
+          target:       desktop
+          arch:         ${{ env.QT_ARCH }}
+          # Qt 5.15.2 win64_msvc2019_64 实际可用的附加模块（按需保留）
+          modules: >-
+            qtcharts
+            qtdatavis3d
+            qtscript
+            qtquick3d
+            qtnetworkauth
+          cache: true
+          cache-key-prefix: qt-5.15.2-win64_msvc2019_64
+          set-env: true
+
+      # ---------------------------------------------------------------
+      # 4. 配置 MSVC 环境（必须在 CMake configure 前执行）
+      # ---------------------------------------------------------------
+      - name: Setup MSVC Developer Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # ---------------------------------------------------------------
+      # 5. CMake Configure
+      #    - CMAKE_PREFIX_PATH 由 install-qt-action 通过 QT_ROOT_DIR 设置
+      #    - GAMMARAY_PROBE_ONLY_BUILD=OFF 构建完整的 UI + probe
+      #    - GAMMARAY_WITH_KDSME=OFF 跳过 KDStateMachineEditor（需要 graphviz）
+      #      如需启用，改为 ON 并确保子模块已初始化
+      # ---------------------------------------------------------------
+      - name: CMake Configure
+        run: |
+          cmake -B build -S . `
+            -G "Ninja" `
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
+            -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT_DIR }}" `
+            -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install" `
+            -DGAMMARAY_PROBE_ONLY_BUILD=OFF `
+            -DGAMMARAY_BUILD_UI=ON `
+            -DGAMMARAY_WITH_KDSME=OFF `
+            -DGAMMARAY_INSTALL_QT_LAYOUT=ON
+        shell: pwsh
+
+      # ---------------------------------------------------------------
+      # 6. 编译
+      # ---------------------------------------------------------------
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+        shell: pwsh
+
+      # ---------------------------------------------------------------
+      # 7. 安装到 install/ 目录（方便打包）
+      # ---------------------------------------------------------------
+      - name: Install
+        run: cmake --install build --config ${{ env.BUILD_TYPE }}
+        shell: pwsh
+
+      # ---------------------------------------------------------------
+      # 8. windeployqt：将所需 Qt DLL 拷入安装目录
+      # ---------------------------------------------------------------
+      - name: Deploy Qt Runtime
+        run: |
+          $gammarayExe = Get-ChildItem "${{ github.workspace }}\install\bin" `
+                           -Filter "gammaray.exe" -Recurse | Select-Object -First 1
+          if ($gammarayExe) {
+            windeployqt --release --no-translations `
+              --no-system-d3d-compiler "$($gammarayExe.FullName)"
+          } else {
+            Write-Warning "gammaray.exe not found, skipping windeployqt"
+          }
+        shell: pwsh
+
+      # ---------------------------------------------------------------
+      # 9. 打包安装目录为 ZIP
+      # ---------------------------------------------------------------
+      - name: Package
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if (-not $tag) { $tag = "dev" }
+          $zipName = "GammaRay-${tag}-Qt${{ env.QT_VERSION }}-win64.zip"
+          Compress-Archive `
+            -Path "${{ github.workspace }}\install\*" `
+            -DestinationPath "${{ github.workspace }}\$zipName"
+          echo "ZIP_NAME=$zipName" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      # ---------------------------------------------------------------
+      # 10. 上传 Artifact（PR / push 均保留 7 天）
+      # ---------------------------------------------------------------
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ github.workspace }}\${{ env.ZIP_NAME }}
+          retention-days: 7

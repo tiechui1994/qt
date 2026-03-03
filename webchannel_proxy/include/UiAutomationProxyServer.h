@@ -5,12 +5,14 @@
 #include <QHash>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QVariant>
 #include <memory>
 
 class QWebSocket;
 class QWebSocketServer;
 class QWebChannel;
 class QWebChannelAbstractTransport;
+class QQmlApplicationEngine;
 
 class UiAutomationHandler {
 public:
@@ -37,8 +39,6 @@ public:
 
 private:
     QObject *findTarget(const QJsonObject &target, QString *error) const;
-    QObject *findByObjectNameLike(const QString &value) const;
-    QObject *findByTextLike(const QString &value) const;
     bool clickObject(QObject *obj) const;
     bool setChecked(QObject *obj, bool checked) const;
     bool setCurrentText(QObject *obj, const QString &value) const;
@@ -52,10 +52,10 @@ private:
 
 class QtQmlUiAutomationHandler final : public UiAutomationHandler {
 public:
-    explicit QtQmlUiAutomationHandler(QObject *rootObject = nullptr);
+    explicit QtQmlUiAutomationHandler(QQmlApplicationEngine *engine = nullptr);
 
-    void setRootObject(QObject *rootObject);
-    QObject *rootObject() const;
+    void setEngine(QQmlApplicationEngine *engine);
+    QQmlApplicationEngine *engine() const;
 
     QJsonValue resolve(const QJsonObject &target, QString *error) override;
     QJsonValue executeAction(const QString &action, const QJsonObject &target, const QJsonValue &value, QString *error) override;
@@ -65,17 +65,14 @@ public:
 
 private:
     QObject *findTarget(const QJsonObject &target, QString *error) const;
-    QObject *findByObjectNameLike(const QString &value) const;
-    QObject *findByTextLike(const QString &value) const;
-    bool clickObject(QObject *obj) const;
-    bool setChecked(QObject *obj, bool checked) const;
-    bool setCurrentText(QObject *obj, const QString &value) const;
-    bool setCurrentIndex(QObject *obj, int index) const;
+    QObject *findTargetOnce(const QJsonObject &target, QString *error) const;
+    bool clickObject(QObject *obj, const QString &methodName = QString(), QString *error = nullptr, const QVariantList &args = QVariantList()) const;
     bool closeObject(QObject *obj) const;
-    bool setTextValue(QObject *obj, const QString &value) const;
+    bool setPropertyValue(QObject *obj, const QString &property, const QVariant &value) const;
     QObject *rootRequired(QString *error) const;
+    QObject *getRoot() const;
 
-    QObject *m_root = nullptr;
+    QQmlApplicationEngine *m_engine = nullptr;
 };
 
 class UiAutomationBridge : public QObject {
@@ -106,7 +103,7 @@ public:
 
     void setHandler(UiAutomationHandler *handler);
     void useDefaultQtHandler(QObject *rootObject);
-    void useDefaultQmlHandler(QObject *rootObject);
+    void useDefaultQmlHandler(QQmlApplicationEngine *engine);
     UiAutomationBridge *bridge() const;
 
     bool start(quint16 port, const QHostAddress &address = QHostAddress::LocalHost, const QString &token = QString());
