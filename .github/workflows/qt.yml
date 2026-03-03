@@ -1,0 +1,86 @@
+name: Build Qt Url
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Download URL'
+        required: true
+        default: ''
+      name:
+        description: 'Project Name'
+        required: true
+        default: ''
+      type:
+        description: 'Build Type'
+        required: true
+        default: 'qml'
+        type: choice
+        options:
+          - 'qml'
+          - 'widgets'
+
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # ✅ 安装 Qt（推荐用 jurplel/install-qt-action）
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '5.15.2'          # Qt 版本，按需修改
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64' # 或 win64_mingw 等
+          modules: ''               # 额外模块，如 qtcharts qtwebengine
+          cache: true
+
+      # ✅ 配置 MSVC 环境（如果用 MSVC 编译器）
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      
+      - name: Download
+        run: |
+          rm -rf  version webchannel_proxy
+          curl -L -o dll.zip ${{ inputs.url }}
+          unzip dll.zip -d data
+        shell: bash
+      
+      - name: Check QML
+        if: ${{ github.event.inputs.type == 'qml' }}
+        run: |
+          qmllint -I ./data/qml ./data/qml/main.qml
+        shell: bash
+
+      # ✅ 用 CMake 构建（推荐）
+      - name: Configure CMake
+        run: |
+          cd data
+          cmake -B ${{github.workspace}}\build -S . -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
+          cmake --build ${{github.workspace}}\build --config Release --parallel
+      
+      - name: Deploy Qt Dependencies widgets
+        if: ${{ github.event.inputs.type == 'widgets' }}
+        run: |
+          mkdir -p deploy
+          copy ${{github.workspace}}\build\${{github.event.inputs.name}}.exe deploy\   
+          windeployqt --release --no-translations --no-system-d3d-compiler deploy\${{github.event.inputs.name}}.exe
+      
+      - name: Deploy Qt Dependencies qml
+        if: ${{ github.event.inputs.type == 'qml' }}
+        run: |
+          mkdir -p deploy
+          copy ${{github.workspace}}\build\${{github.event.inputs.name}}.exe deploy\
+          windeployqt --release --qmldir ${{github.workspace}}\data\qml  deploy\${{github.event.inputs.name}}.exe
+      
+      # ✅ 上传 Artifact（每次构建都可下载）
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: deploy\*
+          retention-days: 1

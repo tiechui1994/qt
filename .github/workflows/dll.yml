@@ -1,0 +1,77 @@
+name: Build Qt Dll
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'DLL name'
+        required: true
+        default: ''
+      url:
+        description: 'DLL download URL'
+        required: true
+        default: ''
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '5.15.2'          # Qt 版本，按需修改
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64' # 或 win64_mingw 等
+          modules: ''               # 额外模块，如 qtcharts qtwebengine
+          cache: true              # 是否启用缓存，默认 true
+          cache-key-prefix: ${{ runner.os }}-qt-5.15.2-${{ inputs.name }}
+      
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      
+      - name: cache vcpkg
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ inputs.name }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-${{ inputs.name }}
+
+      - name: Setup vcpkg
+        run: |
+          if [ ! -d "${{ github.workspace }}/vcpkg" ]; then
+            git clone https://github.com/microsoft/vcpkg.git
+            ./vcpkg/bootstrap-vcpkg.bat
+            ./vcpkg/vcpkg install detours:x64-windows
+          fi
+        shell: bash
+        
+      - name: Download
+        run: |
+          rm -rf  version webchannel_proxy
+          curl -L -o dll.zip ${{ inputs.url }}
+          unzip dll.zip -d dll
+        shell: bash
+
+      - name: Configure and Build
+        run: |
+          cd dll/${{ inputs.name }}
+          cmake -B build  -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DTOOL_PATH=${{ github.workspace }}/vcpkg/installed/x64-windows
+          cmake --build build --config Release
+      
+      - name: tmate
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.name }}
+          path: |
+            dll/${{ inputs.name }}/build/**/*.dll
+            dll/${{ inputs.name }}/build/**/*.lib
+          retention-days: 1

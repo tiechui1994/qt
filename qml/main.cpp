@@ -1,5 +1,3 @@
-#include "UiAutomationProxyServer.h"
-
 #include <QApplication>
 #include <QDebug>
 #include <QQmlApplicationEngine>
@@ -29,10 +27,6 @@ int main(int argc, char *argv[]) {
         qCritical() << "No root objects loaded for qml_demo";
         return 1;
     }
-
-    UiAutomationProxyServer proxy;
-    proxy.useDefaultQmlHandler(engine.rootObjects().first());
-    proxy.start(12345, QHostAddress::LocalHost, QStringLiteral("demo-token"));
 
     return app.exec();
 }
